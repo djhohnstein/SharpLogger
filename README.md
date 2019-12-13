@@ -1,5 +1,9 @@
 # SharpLogger
 
+## Author's Note
+
+I maintain no project, but for one that is more frequently updated (and more stable), I recommend you use WireTap's implementation of this keylogger which can be found here: https://github.com/djhohnstein/WireTap
+
 ## Description
 
 Simple C# project to log keystrokes to both console and a temp file.
